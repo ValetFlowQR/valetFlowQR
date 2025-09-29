@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:shared/shared.dart'; // aquí ya exportas firebase_service y modelos
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializar Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
+  }
 
   runApp(const MyApp());
 }
@@ -19,31 +18,53 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ValetFlow QR',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
+      title: 'Valet Flow QR',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const CarsScreen(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class CarsScreen extends StatelessWidget {
+  const CarsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ValetFlow QR'),
+      appBar: AppBar(title: const Text("Coches registrados")),
+      body: StreamBuilder(
+        stream: FirebaseService.listenCars(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+          final cars = snapshot.data ?? [];
+          if (cars.isEmpty) {
+            return const Center(child: Text("No hay coches registrados"));
+          }
+          return ListView.builder(
+            itemCount: cars.length,
+            itemBuilder: (context, index) {
+              final car = cars[index];
+              return ListTile(
+                title: Text(car.plateNumber),
+                subtitle: Text(car.model ?? "Modelo desconocido"),
+              );
+            },
+          );
+        },
       ),
-      body: const Center(
-        child: Text(
-          '¡Firebase inicializado correctamente!',
-          style: TextStyle(fontSize: 18),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          // 🔹 Inserta un coche de prueba en Firestore
+          await FirebaseService.addCar(
+            Car(plateNumber: "ABC-123", model: "Honda Civic", color: "Rojo"),
+          );
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }

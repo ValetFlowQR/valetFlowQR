@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "835667889247",
+    "project_id": "valetflowqr-40544",
+    "storage_bucket": "valetflowqr-40544.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:835667889247:android:7f64cfbe288efe62ea9fea",
+        "android_client_info": {
+          "package_name": "com.example.valet_pwa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCv5WWegWn2B9hVTKJfD68KDrNDvSwOHjI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:835667889247:android:0a43f3fd423ecc63ea9fea",
+        "android_client_info": {
+          "package_name": "com.example.valetflow_qr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCv5WWegWn2B9hVTKJfD68KDrNDvSwOHjI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

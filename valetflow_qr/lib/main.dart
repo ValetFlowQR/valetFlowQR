@@ -36,15 +36,59 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ValetFlow QR'),
+      body: Row(
+        children: [
+          // ===== MENU LATERAL =====
+          Container(
+            width: 220,
+            color: const Color(0xFF094943),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const DrawerHeader(
+                  child: Text(
+                    "ValetFlow QR",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                _menuItem("Inicio"),
+                _menuItem("Clientes"),
+                _menuItem("Vehículos"),
+                _menuItem("Tickets"),
+                _menuItem("Reportes"),
+                _menuItem("Configuración"),
+              ],
+            ),
+          ),
+
+          // ===== CONTENIDO PRINCIPAL SIMPLE =====
+          const Expanded(
+            child: Center(
+              child: Text(
+                "Contenido base",
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+          ),
+        ],
       ),
-      body: const Center(
-        child: Text(
-          '¡Firebase inicializado correctamente!',
-          style: TextStyle(fontSize: 18),
-        ),
+    );
+  }
+
+  // ===== WIDGET REUTILIZABLE PARA MENÚ =====
+  Widget _menuItem(String title) {
+    return ListTile(
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white),
       ),
+      onTap: () {
+        // Aquí puedes agregar navegación más adelante si quieres
+      },
     );
   }
 }

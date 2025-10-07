@@ -1,7 +1,7 @@
 {
     "name": "valet_pwa",
     "short_name": "valet_pwa",
-    "start_url": ".",
+    "start_url": "/",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",

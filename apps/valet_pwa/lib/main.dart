@@ -1,7 +1,25 @@
 import 'package:flutter/material.dart';
-import 'screens/privacy_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+// Tus pantallas
+import 'screens/privacy_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/request_valet_screen.dart';
+import 'screens/service_status_screen.dart';
+import 'screens/history_screen.dart';
+import 'screens/settings_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const ValetFlowQRApp());
 }
 
@@ -15,6 +33,15 @@ class ValetFlowQRApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.indigo),
       home: const QRHomeScreen(),
+      routes: {
+        '/login': (context) => LoginScreen(),
+        '/register': (context) => RegisterScreen(),
+        '/home': (context) => HomeScreen(),
+        '/request_valet': (context) => RequestValetScreen(),
+        '/service_status': (context) => ServiceStatusScreen(),
+        '/history': (context) => HistoryScreen(),
+        '/settings': (context) => SettingsScreen(),
+      },
     );
   }
 }
@@ -30,9 +57,12 @@ class QRHomeScreen extends StatelessWidget {
           onAccepted: () {
             Navigator.pop(context); // cerrar aviso
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Has aceptado la Política de Privacidad ✅')),
+              const SnackBar(
+                content: Text('Has aceptado la Política de Privacidad ✅'),
+              ),
             );
-            // aquí puedes luego redirigir al formulario de registro
+            // Redirigir al registro después de aceptar
+            Navigator.pushNamed(context, '/register');
           },
         ),
       ),
@@ -49,7 +79,7 @@ class QRHomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/logo.png', height: 120), // opcional
+              Image.asset('assets/logo.png', height: 120),
               const SizedBox(height: 20),
               const Text(
                 'Bienvenido a ValetFlowQR',

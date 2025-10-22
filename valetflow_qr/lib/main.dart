@@ -35,14 +35,27 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final horaActual = DateTime.now();
+    final mensajeHora = '¡Hola! Son las ${horaActual.hour}:${horaActual.minute}';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('ValetFlow QR'),
       ),
-      body: const Center(
-        child: Text(
-          '¡Firebase inicializado correctamente!',
-          style: TextStyle(fontSize: 18),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              '¡Firebase inicializado correctamente!',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              mensajeHora,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
         ),
       ),
     );

@@ -5,9 +5,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'Web is not supported with this manual config. Use flutterfire configure.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -22,10 +20,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: "AIzaSyCTSWg1isO7d_zgSKeMTwIjB8NSp_gBU0o",
-    appId: "1:835667889247:android:a8f8681fd2b2be81ea9fea",
-    messagingSenderId: "835667889247",
-    projectId: "valetflowqr-40544",
-    storageBucket: "valetflowqr-40544.appspot.com",
+    apiKey: 'AIzaSyCv5WWegWn2B9hVTKJfD68KDrNDvSwOHjI',
+    appId: '1:835667889247:android:0a43f3fd423ecc63ea9fea',
+    messagingSenderId: '835667889247',
+    projectId: 'valetflowqr-40544',
+    storageBucket: 'valetflowqr-40544.firebasestorage.app',
   );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyCTSWg1isO7d_zgSKeMTwIjB8NSp_gBU0o',
+    appId: '1:835667889247:web:6d86da70f314e33dea9fea',
+    messagingSenderId: '835667889247',
+    projectId: 'valetflowqr-40544',
+    authDomain: 'valetflowqr-40544.firebaseapp.com',
+    storageBucket: 'valetflowqr-40544.firebasestorage.app',
+  );
+
 }

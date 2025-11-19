@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:shared/shared.dart'; // aquí ya exportas firebase_service y modelos
+import 'package:firebase_auth/firebase_auth.dart';
 
-void main() async {
+import 'firebase_options.dart';
+import 'package:valetflow_qr/screens/login_screen.dart';
+import 'package:valetflow_qr/screens/qr_screen.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp();
-  }
+  // ✅ Inicialización correcta para Web y móvil
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   runApp(const MyApp());
 }
@@ -18,54 +23,40 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Valet Flow QR',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const CarsScreen(),
+      title: 'ValetFlow',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
+      home: const AuthGate(),
     );
   }
 }
 
-class CarsScreen extends StatelessWidget {
-  const CarsScreen({super.key});
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Coches registrados")),
-      body: StreamBuilder(
-        stream: FirebaseService.listenCars(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
-          final cars = snapshot.data ?? [];
-          if (cars.isEmpty) {
-            return const Center(child: Text("No hay coches registrados"));
-          }
-          return ListView.builder(
-            itemCount: cars.length,
-            itemBuilder: (context, index) {
-              final car = cars[index];
-              return ListTile(
-                title: Text(car.plateNumber),
-                subtitle: Text(car.model ?? "Modelo desconocido"),
-              );
-            },
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // ✅ Pantalla de carga mientras se conecta Firebase
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
           );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // 🔹 Inserta un coche de prueba en Firestore
-          await FirebaseService.addCar(
-            Car(plateNumber: "ABC-123", model: "Honda Civic", color: "Rojo"),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+        }
+
+        // ✅ Si ya hay usuario, va al QR
+        if (snapshot.hasData) {
+          return const QrScreen();
+        }
+
+        // ✅ Si no hay usuario, va al login
+        return const LoginScreen();
+      },
     );
   }
 }

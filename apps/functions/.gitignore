@@ -1,0 +1,14 @@
+node_modules/
+*.local
+
+lib/
+dist/
+
+# Sensitive
+serviceAccountKey.json
+.env
+.env.*
+
+# Firebase caches
+firebase-debug.log
+.firebaserc

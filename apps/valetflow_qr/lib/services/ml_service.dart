@@ -87,7 +87,9 @@ Future<String> detectDominantColorHex(File file) async {
 /// ==========================================================
 ///
 Future<String?> detectCarModelRemote(File file) async {
-  final uri = Uri.parse("https://tu-servicio-de-inferencia.example.com/predict");
+  final uri = Uri.parse(
+    "https://us-central1-valetflowqr-40544.cloudfunctions.net/detectCarModel",
+  );
 
   final req = http.MultipartRequest("POST", uri);
 
@@ -101,11 +103,17 @@ Future<String?> detectCarModelRemote(File file) async {
 
   final resp = await req.send();
 
-  if (resp.statusCode != 200) return null;
+  if (resp.statusCode != 200) {
+    print("❌ Error detectCarModelRemote: ${resp.statusCode}");
+    return null;
+  }
 
   final raw = await resp.stream.bytesToString();
+  print("📡 Respuesta IA (Firebase): $raw");
+
   return raw;
 }
+
 
 ///
 /// ==========================================================

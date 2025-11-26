@@ -1,36 +1,145 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'privacy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final String ticketId;
+
+  const RegisterScreen({super.key, required this.ticketId});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _authService = AuthService();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  String _errorMessage = '';
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
-  Future<void> _register() async {
-    setState(() => _errorMessage = '');
+  bool _hasAcceptedPrivacy = false;
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  Map<String, dynamic>? ticketData;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTicket();
+  }
+
+  /// 🟦 Cargar ticket de Firestore
+  Future<void> _loadTicket() async {
     try {
-      await _authService.register(
-        _emailController.text,
-        _passwordController.text,
-      );
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+      final doc = await FirebaseFirestore.instance
+          .collection("qr_codes")
+          .doc(widget.ticketId)
+          .get();
+
+      if (!doc.exists) {
+        setState(() {
+          error = "Este ticket no existe.";
+          _isLoading = false;
+        });
+        return;
       }
-    } on Exception catch (e) {
-      setState(() => _errorMessage = 'Error: $e');
+
+      final data = doc.data()!;
+
+      /// 🔒 Si el ticket ya está iniciado o solicitado → Redirige
+      if (data["status"] == "iniciado" ||
+          data["status"] == "solicitado_cliente" ||
+          data["status"] == "entregado") {
+        Future.delayed(Duration.zero, () {
+          Navigator.pushReplacementNamed(
+            context,
+            "/service_status",
+            arguments: widget.ticketId,
+          );
+        });
+        return;
+      }
+
+      setState(() {
+        ticketData = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        error = "Error al cargar datos.";
+        _isLoading = false;
+      });
     }
   }
 
+  /// 🟦 Guardar datos del cliente
+  Future<void> _saveData() async {
+    if (_isSaving) return;
+
+    if (!_hasAcceptedPrivacy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Debes aceptar la Política de Privacidad.")),
+      );
+      return;
+    }
+
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Ingresa tu nombre.")),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      /// Guardar cambios en Firestore
+      await FirebaseFirestore.instance
+          .collection("qr_codes")
+          .doc(widget.ticketId)
+          .update({
+        "clientName": _nameController.text.trim(),
+        "clientPhone": _phoneController.text.trim(),
+        "status": "iniciado",
+      });
+
+      /// Guardar ticketId en local storage
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setString("current_ticket", widget.ticketId);
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          "/service_status",
+          arguments: widget.ticketId,
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Error al guardar. Inténtalo.")),
+      );
+    }
+  }
+
+  /// 🟦 UI
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (error != null) {
+      return Scaffold(
+        body: Center(
+          child: Text(error!, style: const TextStyle(fontSize: 18)),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -42,84 +151,120 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 450),
               child: Card(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                    borderRadius: BorderRadius.circular(16)),
                 elevation: 8,
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'Crea tu cuenta',
+                        "Datos del vehículo",
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 26,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0175C2),
                         ),
                       ),
+                      const SizedBox(height: 12),
+
+                      /// 🔧 Campos corregidos
+                      _infoTile("Placa", ticketData?["plate"]),
+                      _infoTile("Modelo", ticketData?["carModel"]),
+                      _infoTile("Color", ticketData?["carColor"]),
+                      _infoTile("Lugar asignado", ticketData?["parkingSpot"]),
+                      _infoTile(
+                        "Hora de llegada",
+                        ticketData?["arrivalTime"]?.toString(),
+                      ),
+
                       const SizedBox(height: 24),
+
+                      const Text(
+                        "Ingresa tus datos",
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+
                       TextField(
-                        controller: _emailController,
+                        controller: _nameController,
                         decoration: const InputDecoration(
-                          labelText: 'Correo electrónico',
+                          labelText: 'Nombre',
                           border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.email),
+                          prefixIcon: Icon(Icons.person),
                         ),
                       ),
                       const SizedBox(height: 16),
+
                       TextField(
-                        controller: _passwordController,
+                        controller: _phoneController,
                         decoration: const InputDecoration(
-                          labelText: 'Contraseña',
+                          labelText: 'Teléfono (opcional)',
                           border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.lock),
+                          prefixIcon: Icon(Icons.phone),
                         ),
-                        obscureText: true,
+                        keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: 24),
+
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PrivacyScreen(
+                                readOnly: false,
+                                onAccepted: () {
+                                  setState(() => _hasAcceptedPrivacy = true);
+                                  Navigator.pop(context);
+                                },
+                                onDeclined: () {
+                                  setState(() => _hasAcceptedPrivacy = false);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icon(
+                          _hasAcceptedPrivacy
+                              ? Icons.check_circle
+                              : Icons.privacy_tip,
+                          color:
+                              _hasAcceptedPrivacy ? Colors.green : Colors.grey,
+                        ),
+                        label: Text(
+                          _hasAcceptedPrivacy
+                              ? "Política aceptada"
+                              : "Leer Política de Privacidad",
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _register,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            backgroundColor: const Color(0xFF0175C2),
-                          ),
-                          child: const Text(
-                            'Registrarse',
-                            style: TextStyle(fontSize: 18),
-                          ),
-                        ),
+                        child: _isSaving
+                            ? const Center(child: CircularProgressIndicator())
+                            : ElevatedButton(
+                                onPressed: _saveData,
+                                style: ElevatedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  backgroundColor: const Color(0xFF0175C2),
+                                ),
+                                child: const Text(
+                                  "Continuar",
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
                       ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/login');
-                        },
-                        child: const Text(
-                          '¿Ya tienes cuenta? Inicia sesión',
-                          style: TextStyle(color: Color(0xFF0175C2)),
-                        ),
-                      ),
-                      if (_errorMessage.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12.0),
-                          child: Text(
-                            _errorMessage,
-                            style: const TextStyle(
-                                color: Colors.red, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -127,6 +272,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _infoTile(String label, String? value) {
+    if (value == null || value == "") return const SizedBox();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text("$label: ",
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(value)),
+        ],
       ),
     );
   }

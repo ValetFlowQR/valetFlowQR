@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-// Tus pantallas
+// Pantallas
 import 'screens/privacy_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -35,7 +35,7 @@ class ValetFlowQRApp extends StatelessWidget {
       home: const QRHomeScreen(),
       routes: {
         '/login': (context) => LoginScreen(),
-        '/register': (context) => RegisterScreen(),
+        '/register': (context) => RegisterScreen(ticketId: ''),
         '/home': (context) => HomeScreen(),
         '/request_valet': (context) => RequestValetScreen(),
         '/service_status': (context) => ServiceStatusScreen(),
@@ -54,15 +54,25 @@ class QRHomeScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => PrivacyScreen(
+          readOnly: false, // ❗ Importante: no es de solo lectura
           onAccepted: () {
-            Navigator.pop(context); // cerrar aviso
+            Navigator.pop(context); // Cerrar pantalla
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Has aceptado la Política de Privacidad ✅'),
               ),
             );
-            // Redirigir al registro después de aceptar
+
+            // Redirigir al registro
             Navigator.pushNamed(context, '/register');
+          },
+          onDeclined: () {
+            Navigator.pop(context); // Volver atrás
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Debes aceptar la Política para continuar.'),
+              ),
+            );
           },
         ),
       ),
@@ -79,7 +89,7 @@ class QRHomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/logo.png', height: 120),
+              Image.asset('assets/logo.jpg', height: 120),
               const SizedBox(height: 20),
               const Text(
                 'Bienvenido a ValetFlowQR',

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 // IA
 import 'package:valetflow_qr/services/ml_service.dart';
@@ -31,143 +32,175 @@ class _VehicleRegisterScreenState extends State<VehicleRegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _initCamera();
+    _requestPermissionsAndInitCamera();
   }
 
-  Future<void> _initCamera() async {
-    final cameras = await availableCameras();
-    final backCamera = cameras.first;
+  //---------------------------------------------------------------------------
+  // 1️⃣ Solicitar permisos de cámara e inicializar
+  //---------------------------------------------------------------------------
+  Future<void> _requestPermissionsAndInitCamera() async {
+    final status = await Permission.camera.request();
 
-    _cameraController = CameraController(
-      backCamera,
-      ResolutionPreset.medium,
-      enableAudio: false,
-    );
-
-    await _cameraController!.initialize();
-    setState(() => _isCameraReady = true);
-  }
-
-  /// -------------------------------------------------------------
-  /// 📸 Toma foto, sube al storage y ejecuta IA (placa/color/modelo)
-  /// -------------------------------------------------------------
-  Future<void> _takePhoto() async {
-    if (!_cameraController!.value.isInitialized) return;
-
-    try {
-      setState(() => _isUploading = true);
-
-      final XFile picture = await _cameraController!.takePicture();
-      final File file = File(picture.path);
-
-      // ---------------------------
-      // 🔼 1. Subir a Firebase Storage
-      // ---------------------------
-      final storagePath =
-          "tickets/${widget.ticketId}/vehicle_${DateTime.now().millisecondsSinceEpoch}.jpg";
-
-      final ref = FirebaseStorage.instance.ref().child(storagePath);
-      await ref.putFile(file);
-      final downloadUrl = await ref.getDownloadURL();
-
-      // ---------------------------
-      // 🤖 2. Ejecutar IA
-      // ---------------------------
-
-      final String? plate = await detectPlateText(file);
-      final String carColorHex = await detectDominantColorHex(file);
-      final String? carModel = await detectCarModelRemote(file);
-
-      // ---------------------------
-      // 📝 3. Construir datos a guardar
-      // ---------------------------
-      final updateData = {
-        "photoUrl": downloadUrl,
-        "carColor": carColorHex,
-        "updatedAt": FieldValue.serverTimestamp(),
-      };
-
-      if (plate != null && plate.isNotEmpty) {
-        updateData["plate"] = plate;
-      }
-
-      if (carModel != null && carModel.isNotEmpty) {
-        updateData["carModel"] = carModel;
-      }
-
-      // Historial
-      updateData["statusHistory"] = FieldValue.arrayUnion([
-        {
-          "status": "photo_uploaded",
-          "time": FieldValue.serverTimestamp(),
-          "source": "app_valet",
-        }
-      ]);
-
-      // ---------------------------
-      // 🔥 4. Guardar en Firestore
-      // ---------------------------
-      await FirebaseFirestore.instance
-          .collection("qr_codes")
-          .doc(widget.ticketId)
-          .update(updateData);
-
-      // ---------------------------
-      // 🎉 5. Mostrar imagen en la UI
-      // ---------------------------
-      setState(() {
-        _uploadedImageUrl = downloadUrl;
-        _isUploading = false;
-      });
-
+    if (!status.isGranted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Foto subida y analizada correctamente 🚗✨")),
-      );
-    } catch (e, st) {
-      setState(() => _isUploading = false);
-      print("ERROR VEHICLE REGISTER: $e\n$st");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al procesar la foto: $e")),
-      );
-    }
-  }
-
-  /// -------------------------------------------------------------
-  /// 💾 Guardar datos del valet (lugar de estacionamiento)
-  /// -------------------------------------------------------------
-  Future<void> _saveValetData() async {
-    if (_parkingSpotCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ingresa la ubicación del estacionamiento")),
+        const SnackBar(content: Text("Se requieren permisos de cámara")),
       );
       return;
     }
 
-    await FirebaseFirestore.instance
-        .collection("qr_codes")
-        .doc(widget.ticketId)
-        .update({
-      "parkingSpot": _parkingSpotCtrl.text.trim(),
-      "arrivalTime": FieldValue.serverTimestamp(),
-      "status": "registrado_valet",
+    await _initCamera();
+  }
+
+  //---------------------------------------------------------------------------
+  // 2️⃣ Inicializar cámara en JPEG
+  //---------------------------------------------------------------------------
+  Future<void> _initCamera() async {
+    try {
+      final cameras = await availableCameras();
+      final backCamera = cameras.first;
+
+      _cameraController = CameraController(
+        backCamera,
+        ResolutionPreset.medium,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+
+      await _cameraController!.initialize();
+      setState(() => _isCameraReady = true);
+    } catch (e) {
+      print("ERROR INIT CAMERA: $e");
+    }
+  }
+
+  //---------------------------------------------------------------------------
+  // 3️⃣ Tomar foto + subir + análisis IA + guardar en Firestore
+  //---------------------------------------------------------------------------
+Future<void> _takePhoto() async {
+  if (!_cameraController!.value.isInitialized) return;
+
+  try {
+    setState(() => _isUploading = true);
+
+    final XFile picture = await _cameraController!.takePicture();
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    final File file = File(picture.path);
+
+    final exists = await file.exists();
+    final length = await file.length();
+    print("📁 Foto generada: $exists | $length bytes");
+
+    if (!exists || length < 100) {
+      throw Exception("La foto no se guardó correctamente.");
+    }
+
+    // -------------------------
+    // 🔼 Subir a Firebase
+    // -------------------------
+    final path =
+        "tickets/${widget.ticketId}/vehicle_${DateTime.now().millisecondsSinceEpoch}.jpg";
+
+    final ref = FirebaseStorage.instance.ref(path);
+    await ref.putFile(file);
+
+    final url = await ref.getDownloadURL();
+
+    // -------------------------
+    // 🔎 IA Local + Remota
+    // -------------------------
+    final String? plate = await detectPlateText(file);
+    final String colorHex = await detectDominantColorHex(file);
+    final String? carModel = await detectCarModelRemote(file);
+
+    // -------------------------
+    // 📌 Datos para Firestore
+    // -------------------------
+    final updateData = {
+      "photoUrl": url,
+      "carColor": colorHex,
       "updatedAt": FieldValue.serverTimestamp(),
+
+      // 👇 AQUÍ LA CORRECCIÓN
       "statusHistory": FieldValue.arrayUnion([
         {
-          "status": "registrado_valet",
-          "time": FieldValue.serverTimestamp(),
+          "status": "photo_uploaded",
+          "time": DateTime.now().toIso8601String(), 
           "source": "app_valet",
         }
       ]),
+    };
+
+    if (plate != null && plate.isNotEmpty) updateData["plate"] = plate;
+    if (carModel != null && carModel.isNotEmpty) updateData["carModel"] = carModel;
+
+    // -------------------------
+    // 🔥 Guardar en Firestore
+    // -------------------------
+    await FirebaseFirestore.instance
+        .collection("qr_codes")
+        .doc(widget.ticketId)
+        .set(updateData, SetOptions(merge: true));
+
+    setState(() {
+      _uploadedImageUrl = url;
+      _isUploading = false;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Datos guardados correctamente ✔️")),
+      const SnackBar(content: Text("Foto subida y analizada correctamente 🚗✨")),
     );
+  } catch (e, st) {
+    print("ERROR VEHICLE REGISTER: $e\n$st");
 
-    Navigator.pop(context);
+    setState(() => _isUploading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error al procesar foto: $e")),
+    );
+  }
+}
+
+
+  //---------------------------------------------------------------------------
+  // 4️⃣ Guardar información adicional del valet
+  //---------------------------------------------------------------------------
+Future<void> _saveValetData() async {
+  if (_parkingSpotCtrl.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Ingresa la ubicación del estacionamiento")),
+    );
+    return;
   }
 
+  await FirebaseFirestore.instance
+      .collection("qr_codes")
+      .doc(widget.ticketId)
+      .set({
+    "parkingSpot": _parkingSpotCtrl.text.trim(),
+    "arrivalTime": FieldValue.serverTimestamp(),
+    "status": "registrado_valet",
+    "updatedAt": FieldValue.serverTimestamp(),
+    "statusHistory": FieldValue.arrayUnion([
+      {
+        "status": "vehicle_data_ready",
+        "time": DateTime.now().toIso8601String(),
+        "source": "app_valet",
+      }
+    ]),
+  }, SetOptions(merge: true));
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Datos guardados correctamente ✔️")),
+  );
+
+  Navigator.pop(context);
+}
+
+
+  //---------------------------------------------------------------------------
+  // UI
+  //---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -195,13 +228,8 @@ class _VehicleRegisterScreenState extends State<VehicleRegisterScreen> {
 
             if (_uploadedImageUrl != null) ...[
               Image.network(_uploadedImageUrl!, height: 200),
-              const Padding(
-                padding: EdgeInsets.only(top: 10),
-                child: Text(
-                  "Foto subida correctamente",
-                  style: TextStyle(color: Colors.green),
-                ),
-              ),
+              const Text("Foto subida correctamente",
+                  style: TextStyle(color: Colors.green)),
             ],
 
             const SizedBox(height: 30),

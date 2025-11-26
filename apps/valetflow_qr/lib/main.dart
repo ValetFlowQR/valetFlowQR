@@ -9,7 +9,7 @@ import 'package:valetflow_qr/screens/qr_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Inicialización correcta para Web y móvil
+  // Inicializar Firebase normalmente (sin App Check)
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -42,19 +42,16 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // ✅ Pantalla de carga mientras se conecta Firebase
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // ✅ Si ya hay usuario, va al QR
         if (snapshot.hasData) {
           return const QrScreen();
         }
 
-        // ✅ Si no hay usuario, va al login
         return const LoginScreen();
       },
     );

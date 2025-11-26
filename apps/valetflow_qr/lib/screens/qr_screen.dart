@@ -132,15 +132,18 @@ class _QrScreenState extends State<QrScreen> {
 
                   // ⭐ La PWA pondrá status = "iniciado"
                   if (data["status"] == "iniciado") {
-                    Future.microtask(() {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => VehicleRegisterScreen(ticketId: _lastTicketId!),
-                        ),
-                      );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => VehicleRegisterScreen(ticketId: snapshot.data!.id),
+                          ),
+                        );
+                      }
                     });
                   }
+
 
                   return Column(
                     children: [

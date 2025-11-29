@@ -1,6 +1,6 @@
 {
-    "name": "valet_crm",
-    "short_name": "valet_crm",
+    "name": "valetflow",
+    "short_name": "valetflow",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

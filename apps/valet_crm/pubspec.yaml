@@ -1,32 +1,60 @@
 name: valet_crm
-description: "A new Flutter project."
-
-publish_to: 'none' 
-
+description: "ValetFlow CRM - Gestión de estacionamientos y vehículos"
+publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.0
+  sdk: '>=3.9.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  shared:
-    path: ../../shared
 
-
-  cupertino_icons: ^1.0.8
+  # Firebase
   firebase_core: ^3.15.2
+  firebase_auth: ^5.7.0
+  cloud_firestore: ^5.6.12
+  firebase_storage: ^12.1.0
+  firebase_crashlytics: ^4.3.10
+
+  http: ^1.2.2
+  
+  # Google Sign In
+  google_sign_in: ^6.2.1
+
+  # UI + Utilidades
+  cupertino_icons: ^1.0.8
+  logging: ^1.1.1
+  logger: ^2.2.0
+  intl: ^0.18.1
+
+  # Archivos / Imágenes
+  image_picker: ^1.1.1
+
+  # Email
+  mailer: ^6.2.4
+
+  # PDF
+  printing: ^5.12.5
+  pdf: ^3.11.3
+
+  # Seguridad
+  flutter_secure_storage: ^9.2.2
+  flutter_dotenv: ^5.1.0
+
+
+  fl_chart: ^0.65.0
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-
   flutter_lints: ^5.0.0
 
-
 flutter:
-
-
   uses-material-design: true
+
+  assets:
+    - assets/logo_blanco.png
+    - assets/logo_verde.png
+    - .env

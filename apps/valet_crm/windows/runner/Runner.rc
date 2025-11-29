@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "valet_crm" "\0"
+            VALUE "FileDescription", "valetflow" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "valet_crm" "\0"
+            VALUE "InternalName", "valetflow" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "valet_crm.exe" "\0"
-            VALUE "ProductName", "valet_crm" "\0"
+            VALUE "OriginalFilename", "valetflow.exe" "\0"
+            VALUE "ProductName", "valetflow" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
